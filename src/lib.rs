@@ -145,79 +145,49 @@ pub fn decode(input: &[u8]) -> Vec<Character> {
             }
             let mut map = [0u64; 64];
             let mut value = None;
-            for q0 in 0..4 {
-                let mut erase = false;
-                if input.read_bit().unwrap() {
-                    erase = true;
-                    value = Some(input.read_bit().unwrap());
-                }
-                for q1 in 0..4 {
-                    let mut erase = false;
-                    if value.is_none() && input.read_bit().unwrap() {
-                        erase = true;
-                        value = Some(input.read_bit().unwrap());
-                    }
-                    for q2 in 0..4 {
-                        let mut erase = false;
-                        if value.is_none() && input.read_bit().unwrap() {
-                            erase = true;
-                            value = Some(input.read_bit().unwrap());
-                        }
-                        for q3 in 0..4 {
-                            let mut erase = false;
-                            if value.is_none() && input.read_bit().unwrap() {
-                                erase = true;
+            let mut erase = -1;
+            for (index, shift, q) in (0..4096).map(|n| {
+                (
+                    n / 64,
+                    n % 64,
+                    [
+                        n / 1024 % 4,
+                        n / 256 % 4,
+                        n / 64 % 4,
+                        n / 16 % 4,
+                        n / 4 % 4,
+                        n % 4,
+                    ],
+                )
+            }) {
+                for i in 0..q.len() {
+                    if value.is_none() {
+                        if q.ends_with(&vec![0; q.len() - i]) {
+                            if input.read_bit().unwrap() {
+                                erase = i as i32;
                                 value = Some(input.read_bit().unwrap());
                             }
-                            for q4 in 0..4 {
-                                let mut erase = false;
-                                if value.is_none() && input.read_bit().unwrap() {
-                                    erase = true;
-                                    value = Some(input.read_bit().unwrap());
-                                }
-                                for q5 in 0..4 {
-                                    let index = (q0 / 2 * 32)
-                                        + (q1 / 2 * 16)
-                                        + (q2 / 2 * 8)
-                                        + (q3 / 2 * 4)
-                                        + (q4 / 2 * 2)
-                                        + (q5 / 2);
-                                    let shift = (q0 % 2 * 32)
-                                        + (q1 % 2 * 16)
-                                        + (q2 % 2 * 8)
-                                        + (q3 % 2 * 4)
-                                        + (q4 % 2 * 2)
-                                        + (q5 % 2);
-                                    map[index] |= if let Some(v) = value {
-                                        if v {
-                                            1 << shift
-                                        } else {
-                                            0
-                                        }
-                                    } else if input.read_bit().unwrap() {
-                                        1 << shift
-                                    } else {
-                                        0
-                                    };
-                                }
-                                if erase {
-                                    value = None;
-                                }
-                            }
-                            if erase {
-                                value = None;
-                            }
                         }
-                        if erase {
-                            value = None;
-                        }
-                    }
-                    if erase {
-                        value = None;
                     }
                 }
-                if erase {
-                    value = None;
+                map[index] |= if let Some(v) = value {
+                    if v {
+                        1 << shift
+                    } else {
+                        0
+                    }
+                } else if input.read_bit().unwrap() {
+                    1 << shift
+                } else {
+                    0
+                };
+                for i in 0..q.len() {
+                    if q.ends_with(&vec![0; q.len() - i]) {
+                        if erase == i as i32 {
+                            value = None;
+                            erase = -1;
+                        }
+                    }
                 }
             }
             let mut raster_data: [u8; 512] = [0; 512];
