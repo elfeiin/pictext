@@ -182,7 +182,7 @@ pub fn decode(input: &[u8]) -> Vec<Character> {
                     0
                 };
                 for i in 0..q.len() {
-                    if q.ends_with(&vec![0; q.len() - i]) {
+                    if q.ends_with(&vec![3; q.len() - i]) {
                         if erase == i as i32 {
                             value = None;
                             erase = -1;
